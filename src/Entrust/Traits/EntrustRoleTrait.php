@@ -27,7 +27,7 @@ trait EntrustRoleTrait
         if(!parent::save($options)){
             return false;
         }
-        Cache::tags(Config::get('entrust.permission_role_table'))->flush();
+        Config::get('entrust.permission_role_table');
         return true;
     }
     public function delete(array $options = [])
@@ -35,7 +35,7 @@ trait EntrustRoleTrait
         if(!parent::delete($options)){
             return false;
         }
-        Cache::tags(Config::get('entrust.permission_role_table'))->flush();
+        Config::get('entrust.permission_role_table');
         return true;
     }
     public function restore()
@@ -43,7 +43,7 @@ trait EntrustRoleTrait
         if(!parent::restore()){
             return false;
         }
-        Cache::tags(Config::get('entrust.permission_role_table'))->flush();
+        Config::get('entrust.permission_role_table');
         return true;
     }
     
@@ -54,7 +54,7 @@ trait EntrustRoleTrait
      */
     public function users()
     {
-        return $this->belongsToMany(Config::get('auth.providers.users.model'), Config::get('entrust.role_user_table'),Config::get('entrust.role_foreign_key'),Config::get('entrust.user_foreign_key'));
+        return $this->belongsToMany(Config::get('auth.providers.users.model'), Config::get('entrust.role_user_table'),Config::get('entrust.role_foreign_key'),Config::get('entrust.user_foreign_key'))->withPivot(['account_id','module_id']);
        // return $this->belongsToMany(Config::get('auth.model'), Config::get('entrust.role_user_table'));
     }
 

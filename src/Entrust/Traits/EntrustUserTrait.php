@@ -11,6 +11,7 @@
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use InvalidArgumentException;
+use Symfony\Component\Routing\Exception\InvalidParameterException;
 
 trait EntrustUserTrait
 {
@@ -26,17 +27,17 @@ trait EntrustUserTrait
     public function save(array $options = [])
     {   //both inserts and updates
         parent::save($options);
-        Cache::tags(Config::get('entrust.role_user_table'))->flush();
+        Config::get('entrust.role_user_table');
     }
     public function delete(array $options = [])
     {   //soft or hard
         parent::delete($options);
-        Cache::tags(Config::get('entrust.role_user_table'))->flush();
+        Config::get('entrust.role_user_table');
     }
     public function restore()
     {   //soft delete undo's
         parent::restore();
-        Cache::tags(Config::get('entrust.role_user_table'))->flush();
+        Config::get('entrust.role_user_table');
     }
     
     /**
@@ -46,7 +47,9 @@ trait EntrustUserTrait
      */
     public function roles()
     {
-        return $this->belongsToMany(Config::get('entrust.role'), Config::get('entrust.role_user_table'), Config::get('entrust.user_foreign_key'), Config::get('entrust.role_foreign_key'));
+        // select roles from account_user_role_module where user = [this->user];
+//        DB::select('role'0
+        return $this->belongsToMany(Config::get('entrust.role'), Config::get('entrust.role_user_table'), Config::get('entrust.user_foreign_key'), Config::get('entrust.role_foreign_key'))->withPivot(['account_id','module_id'])->withTimestamps();
     }
 
     /**
@@ -217,35 +220,43 @@ trait EntrustUserTrait
     /**
      * Alias to eloquent many-to-many relation's attach() method.
      *
-     * @param mixed $role
+     * @param object|int|array      $role
+     * @param object|int|array      $module
+     * @param object|int|array|null $account
      */
-    public function attachRole($role)
+    public function attachRole($role, $module, $account = null)
     {
-        if(is_object($role)) {
-            $role = $role->getKey();
+        if (is_null($account) ) {
+            $account = $this->defaultAccount();
+            if ( empty($account) ) {
+                throw new InvalidParameterException('User not associated with any accounts, so the account must be provided');
+            }
         }
 
-        if(is_array($role)) {
-            $role = $role['id'];
-        }
+        $role = $this->_getId($role);
+        $module = $this->_getId($module);
+        $account = $this->_getId($account);
 
-        $this->roles()->attach($role);
+        $this->roles()->attach($role,['account_id' =>$account,'module_id'=>$module]);
     }
 
     /**
      * Alias to eloquent many-to-many relation's detach() method.
      *
      * @param mixed $role
+     * @param $module
+     * @param null $account
+     * @throws Exception
      */
-    public function detachRole($role)
+    public function detachRole($role, $module, $account = null)
     {
-        if (is_object($role)) {
-            $role = $role->getKey();
+        if (is_null($account) ) {
+            $account = $this->defaultAccount();
         }
 
-        if (is_array($role)) {
-            $role = $role['id'];
-        }
+        $role = $this->_getId($role);
+        $module = $this->_getId($module);
+        $account = $this->_getId($account);
 
         $this->roles()->detach($role);
     }
@@ -253,12 +264,12 @@ trait EntrustUserTrait
     /**
      * Attach multiple roles to a user
      *
-     * @param mixed $roles
+     * @param array $rolesArray   array of arrays with required params from $this->attachRole()
      */
-    public function attachRoles($roles)
+    public function attachRoles(array $rolesArray)
     {
-        foreach ($roles as $role) {
-            $this->attachRole($role);
+        foreach ($rolesArray as $array) {
+            $this->attachRole($array[0],$array[1],$array[2]);
         }
     }
 
@@ -274,6 +285,26 @@ trait EntrustUserTrait
         foreach ($roles as $role) {
             $this->detachRole($role);
         }
+    }
+
+    /**
+     * Get the Id of the item
+     *
+     * @param object|array|int $item
+     * @return int
+     * @throws \InvalidParameterException
+     */
+    protected function _getId($item)
+    {
+        if (is_object($item) ) {
+            $item = $item->getKey();
+        } else if (is_array($item) ) {
+            $item = $item['id'];
+        } else if (!is_int($item)) {
+            throw new InvalidParameterException(__FUNCTION__ . ': Could not get Id: Parameter must be an object, array, or integer.');
+        }
+
+        return $item;
     }
 
 }
