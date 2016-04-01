@@ -25,6 +25,19 @@ class EntrustRole extends Model implements EntrustRoleInterface
     protected $table;
 
     /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
+    protected $fillable = [
+        'name',
+        'display_name',
+        'description',
+        'level',
+        'module_id'
+    ];
+
+    /**
      * Creates a new instance of the model.
      *
      * @param array $attributes

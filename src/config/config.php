@@ -73,7 +73,7 @@ return [
     | database.
     |
     */
-    'role_user_table' => 'role_user',
+    'role_user_table' => 'user_role',
 
     /*
     |--------------------------------------------------------------------------
@@ -84,15 +84,46 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Role Foreign key on Entrust's role_user and permission_role Tables (Pivot)
+    | Role Foreign key on Entrust's role_user Table (Pivot)
     |--------------------------------------------------------------------------
     */
     'role_foreign_key' => 'role_id',
 
     /*
     |--------------------------------------------------------------------------
-    | Permission Foreign key on Entrust's permission_role Table (Pivot)
+    | Entrust accounts Table
+    |--------------------------------------------------------------------------
+    |
+    | This is the accounts table that holds the accounts referenced by
+    | 'account_foreign_key'
+    |
+    */
+    'accounts_table' => 'accounts',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Account Foreign key on Entrust's roles Table (Pivot)
     |--------------------------------------------------------------------------
     */
-    'permission_foreign_key' => 'permission_id',
+    'account_foreign_key' => 'account_id',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Entrust modules Table
+    |--------------------------------------------------------------------------
+    |
+    | This is the accounts table that holds the accounts referenced by
+    | 'module_foreign_key'
+    |
+    */
+    'modules_table' => 'modules',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Account Foreign key on Entrust's roles Table (Pivot)
+    |--------------------------------------------------------------------------
+    */
+    'module_foreign_key' => 'module_id',
+
+
 ];

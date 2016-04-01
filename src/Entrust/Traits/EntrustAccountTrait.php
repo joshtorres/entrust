@@ -8,22 +8,19 @@
  * @package Zizaco\Entrust
  */
 
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use InvalidArgumentException;
 use Symfony\Component\Routing\Exception\InvalidParameterException;
 
-trait EntrustUserTrait
+trait EntrustAccountTrait
 {
     //Big block of caching functionality.
     public function cachedRoles()
     {
         $userPrimaryKey = $this->primaryKey;
         $cacheKey = 'entrust_roles_for_user_'.$this->$userPrimaryKey;
-//        return $this->roles()->get();
-
         return Cache::tags(Config::get('entrust.role_user_table'))->remember($cacheKey, Config::get('cache.ttl'), function () {
             return $this->roles()->get();
         });
@@ -42,30 +39,17 @@ trait EntrustUserTrait
     }
     
     /**
-     * Many-to-Many relations with Role
+     * One-to-Many relation with Role
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany
      */
     public function roles()
     {
-        return $this->belongsToMany(Config::get('entrust.role'), Config::get('entrust.role_user_table'), Config::get('entrust.user_foreign_key'), Config::get('entrust.role_foreign_key'))
-            ->withTimestamps();
-    }
-
-    /**
-     * Return User's roles with Accounts and Modules info attached
-     *
-     * @return \Illuminate\Database\Eloquent\Relations\BelongsToMany $results
-     */
-    public function rolesFull()
-    {
-        $role_user_table = Config::get('entrust.role_user_table');
         $accounts_table = Config::get('entrust.accounts_table');
         $modules_table = Config::get('entrust.modules_table');
         $roles_table = Config::get('entrust.roles_table');
 
-        $results = $this->belongsToMany(Config::get('entrust.role'), $role_user_table, Config::get('entrust.user_foreign_key'), Config::get('entrust.role_foreign_key'))
-            ->join($accounts_table, $roles_table . '.' . Config::get('entrust.account_foreign_key'), '=', $accounts_table . '.id')
+        $results = $this->hasMany(Config::get('entrust.role'), null, Config::get('entrust.account_foreign_key'))
             ->join($modules_table, $roles_table . '.'.Config::get('entrust.module_foreign_key'), '=', $modules_table . '.id')
             ->select(
                 $accounts_table .   '.id AS '         . rtrim($accounts_table,'s')   . '_id' ,
@@ -86,9 +70,9 @@ trait EntrustUserTrait
     }
 
     /**
-     * Determine if user is Super Admin for a given account.
+     * Determine if user is Super Admin
      *
-     * @param \App\Account $account defaults to \App\User->currentAccount()
+     * @param null $account
      * @return bool
      */
     public function isSuperAdmin($account = null)
@@ -123,22 +107,23 @@ trait EntrustUserTrait
      * Checks if the user has a role on a given account by its name.
      *
      * @param string|array $name Role name or array of role names.
-     * @param \App\Account|array|int|null $account
+     * @param null $account
      * @param bool $requireAll All roles in the array are required.
      * @return bool
      */
     public function hasRole($name, $account = null, $requireAll = false)
     {
+
         // this will require a joining of the user_role and roles table;
         // need to look up role ID, then look at user_role table and see if there is a row with user_id and role_id
+
         if ( is_null($account) ) {
             $account = $this->currentAccount();
         }
-        $accountId = $this->_getId($account);
 
         if (is_array($name)) {
             foreach ($name as $roleName) {
-                $hasRole = $this->hasRole($roleName, $accountId);
+                $hasRole = $this->hasRole($roleName, $account);
 
                 if ($hasRole && !$requireAll) {
                     return true;
@@ -153,7 +138,7 @@ trait EntrustUserTrait
             return $requireAll;
         } else {
             foreach ($this->cachedRoles() as $role) {
-                if ( ($role->account_id === $accountId) && ($role->name == $name) ) {
+                if ($role->name == $name) {
                     return true;
                 }
             }
@@ -275,22 +260,42 @@ trait EntrustUserTrait
      * Alias to eloquent many-to-many relation's attach() method.
      *
      * @param object|int|array $role
+     * @param object|int|array|null $account defaults to currentAccount in session if there is one. If not, it looks for defaultAccount of user.
+     * @internal param array|int|object $module
      */
-    public function attachRole($role)
+    public function attachRole($role, $account = null)
     {
+        if (is_null($account) ) {
+            $account = session('currentAccount', $this->defaultAccount());
+            if ( empty($account) ) {
+                throw new InvalidParameterException('User not associated with any accounts and there isn\'t a current Account in this session, so the account must be provided');
+            }
+        }
+
         $role = $this->_getId($role);
-        $this->roles()->attach($role);
+        $account = $this->_getId($account);
+
+        $this->roles()->attach($role,['account_id' =>$account]);
     }
 
     /**
      * Alias to eloquent many-to-many relation's detach() method.
      *
      * @param mixed $role
+     * @param $module
+     * @param null $account
      * @throws Exception
      */
-    public function detachRole($role)
+    public function detachRole($role, $module, $account = null)
     {
+        if (is_null($account) ) {
+            $account = $this->defaultAccount();
+        }
+
         $role = $this->_getId($role);
+        $module = $this->_getId($module);
+        $account = $this->_getId($account);
+
         $this->roles()->detach($role);
     }
 

@@ -46,6 +46,42 @@ trait EntrustRoleTrait
         Config::get('entrust.permission_role_table');
         return true;
     }
+
+    /**
+     *  Check role level and return the string value of the level based on range that it is in
+     */
+    public function checkRoleLevel()
+    {
+        // @TODO [churchapp]:[Josh] - plan out and create a role system based on these levels so the user can create their own role names such as Ministry Leader,etc.
+        // super admin is 0
+            // - no restrictions
+        // billing admin 1-9
+            // - has access to billing
+        // admin is 10-99
+            // - can access everything except billing info
+        // editor is 100-199
+            // - can create, edit, and delete resources
+            // - cannot change users, or account information
+        // reviewer is 200-299
+            // - can only view and edit resources
+        // viewer is 300-399
+            // - can only view resources
+        // scheduled / included viewer is 400-499
+            // - can only view resources, when scheduled or included in the resource ( they must have a title for the specific event/resource)
+        // subscriber is 500-599
+            // - can only view resources tagged as "public"
+
+    }
+
+    /**
+     * Returns the Module associated with this Role
+     *
+     * @return mixed
+     */
+    public function module()
+    {
+        return $this->belongsTo('App/Module','module_id');
+    }
     
     /**
      * Many-to-Many relations with the user model.
@@ -54,8 +90,7 @@ trait EntrustRoleTrait
      */
     public function users()
     {
-        return $this->belongsToMany(Config::get('auth.providers.users.model'), Config::get('entrust.role_user_table'),Config::get('entrust.role_foreign_key'),Config::get('entrust.user_foreign_key'))->withPivot(['account_id','module_id']);
-       // return $this->belongsToMany(Config::get('auth.model'), Config::get('entrust.role_user_table'));
+        return $this->belongsToMany(Config::get('auth.providers.users.model'), Config::get('entrust.role_user_table'),Config::get('entrust.role_foreign_key'),Config::get('entrust.user_foreign_key'))->withPivot(['account_id']);
     }
 
     /**
