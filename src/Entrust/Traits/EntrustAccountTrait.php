@@ -21,9 +21,9 @@ trait EntrustAccountTrait
     {
         $userPrimaryKey = $this->primaryKey;
         $cacheKey = 'entrust_roles_for_user_'.$this->$userPrimaryKey;
-        return Cache::tags(Config::get('entrust.role_user_table'))->remember($cacheKey, Config::get('cache.ttl'), function () {
+//        return Cache::tags(Config::get('entrust.role_user_table'))->remember($cacheKey, Config::get('cache.ttl'), function () {
             return $this->roles()->get();
-        });
+//        });
     }
     public function save(array $options = [])
     {   //both inserts and updates

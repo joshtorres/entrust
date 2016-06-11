@@ -24,9 +24,9 @@ trait EntrustUserTrait
         $cacheKey = 'entrust_roles_for_user_'.$this->$userPrimaryKey;
 //        return $this->roles()->get();
 
-        return Cache::tags(Config::get('entrust.role_user_table'))->remember($cacheKey, Config::get('cache.ttl'), function () {
+//        return Cache::tags(Config::get('entrust.role_user_table'))->remember($cacheKey, Config::get('cache.ttl'), function () {
             return $this->roles()->get();
-        });
+//        });
     }
     public function save(array $options = [])
     {   //both inserts and updates
@@ -60,25 +60,27 @@ trait EntrustUserTrait
     public function rolesFull()
     {
         $role_user_table = Config::get('entrust.role_user_table');
-        $accounts_table = Config::get('entrust.accounts_table');
+        $teams_table = Config::get('entrust.accounts_table');
         $modules_table = Config::get('entrust.modules_table');
         $roles_table = Config::get('entrust.roles_table');
 
         $results = $this->belongsToMany(Config::get('entrust.role'), $role_user_table, Config::get('entrust.user_foreign_key'), Config::get('entrust.role_foreign_key'))
-            ->join($accounts_table, $roles_table . '.' . Config::get('entrust.account_foreign_key'), '=', $accounts_table . '.id')
+            ->join($teams_table, $roles_table . '.' . Config::get('entrust.account_foreign_key'), '=', $teams_table . '.id')
             ->join($modules_table, $roles_table . '.'.Config::get('entrust.module_foreign_key'), '=', $modules_table . '.id')
             ->select(
-                $accounts_table .   '.id AS '         . rtrim($accounts_table,'s')   . '_id' ,
-                $accounts_table .   '.name AS '         . rtrim($accounts_table,'s')   . '_name' ,
-                $accounts_table .   '.account_slug AS ' . rtrim($accounts_table,'s')   . '_slug' ,
+                $teams_table .   '.id AS '         . rtrim($teams_table,'s')   . '_id' ,
+//                $teams_table .   '.name AS '         . rtrim($teams_table,'s')   . '_name' ,
+//                $teams_table .   '.team_slug AS ' . rtrim($teams_table,'s')   . '_slug' ,
 
-                $modules_table .    '.name AS '         . rtrim($modules_table,'s')    . '_name' ,
+                $modules_table .    '.id AS '           . rtrim($modules_table,'s')    . '_id',
+//                $modules_table .    '.name AS '         . rtrim($modules_table,'s')    . '_name' ,
 //                $modules_table .    '.module_slug AS '  . rtrim($modules_table,'s')    . '_slug' ,
 
-                $roles_table .      '.name AS '         . rtrim($roles_table,'s')      . '_name' ,
-                $roles_table .      '.display_name AS ' . rtrim($roles_table,'s')      . '_display_name',
-                $roles_table .      '.description AS '  . rtrim($roles_table,'s')      . '_description',
-                $roles_table .      '.level AS '        . rtrim($roles_table,'s')      . '_level'
+                $roles_table .      '.*' /* AS '           . rtrim($roles_table,'s')      . '_id'*/
+//                $roles_table .      '.name AS '         . rtrim($roles_table,'s')      . '_name' ,
+//                $roles_table .      '.display_name AS ' . rtrim($roles_table,'s')      . '_display_name',
+//                $roles_table .      '.description AS '  . rtrim($roles_table,'s')      . '_description',
+//                $roles_table .      '.level AS '        . rtrim($roles_table,'s')      . '_level'
             )
             ->withTimestamps();
 
@@ -87,6 +89,7 @@ trait EntrustUserTrait
 
     /**
      * Determine if user is Super Admin for a given account.
+     * // @TODO [Josh] - this will be equivalent to isOwner for a team
      *
      * @param \App\Account $account defaults to \App\User->currentAccount()
      * @return bool
@@ -97,6 +100,18 @@ trait EntrustUserTrait
             $account = $this->currentAccount();
         }
         return $this->hasRole('super_admin', $account);
+    }
+
+    /**
+     * Check if User is a System Admin
+     * You are a system admin if you are a Super Admin on Account 1, Module 1
+     * // @TODO [Josh] - this will be equivalent to being in the "developers" array for spark
+     *
+     * @return bool
+     */
+    public function isSystemAdmin()
+    {
+        return $this->isSuperAdmin(1);
     }
 
     /**
@@ -123,18 +138,18 @@ trait EntrustUserTrait
      * Checks if the user has a role on a given account by its name.
      *
      * @param string|array $name Role name or array of role names.
-     * @param \App\Account|array|int|null $account
+     * @param \App\Team|array|int|null $team
      * @param bool $requireAll All roles in the array are required.
      * @return bool
      */
-    public function hasRole($name, $account = null, $requireAll = false)
+    public function hasRole($name, $team = null, $requireAll = false)
     {
         // this will require a joining of the user_role and roles table;
         // need to look up role ID, then look at user_role table and see if there is a row with user_id and role_id
-        if ( is_null($account) ) {
-            $account = $this->currentAccount();
+        if ( is_null($team) ) {
+            $team = $this->currentAccount();
         }
-        $accountId = $this->_getId($account);
+        $accountId = $this->_getId($team);
 
         if (is_array($name)) {
             foreach ($name as $roleName) {

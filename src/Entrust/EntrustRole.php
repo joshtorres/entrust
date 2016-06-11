@@ -35,7 +35,7 @@ class EntrustRole extends Model implements EntrustRoleInterface
         'description',
         'level',
         'module_id',
-        'account_id'
+        'team_id'
     ];
 
     /**

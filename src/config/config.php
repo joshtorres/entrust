@@ -98,14 +98,14 @@ return [
     | 'account_foreign_key'
     |
     */
-    'accounts_table' => 'accounts',
+    'accounts_table' => 'teams',
 
     /*
     |--------------------------------------------------------------------------
     | Account Foreign key on Entrust's roles Table (Pivot)
     |--------------------------------------------------------------------------
     */
-    'account_foreign_key' => 'account_id',
+    'account_foreign_key' => 'team_id',
 
     /*
     |--------------------------------------------------------------------------

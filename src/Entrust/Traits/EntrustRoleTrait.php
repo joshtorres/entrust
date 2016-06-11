@@ -8,6 +8,7 @@
  * @package Zizaco\Entrust
  */
 
+use App\Permission;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Cache;
 
@@ -18,9 +19,9 @@ trait EntrustRoleTrait
     {
         $rolePrimaryKey = $this->primaryKey;
         $cacheKey = 'entrust_permissions_for_role_'.$this->$rolePrimaryKey;
-        return Cache::tags(Config::get('entrust.permission_role_table'))->remember($cacheKey, Config::get('cache.ttl'), function () {
+//        return Cache::tags(Config::get('entrust.permission_role_table'))->remember($cacheKey, Config::get('cache.ttl'), function () {
             return $this->perms()->get();
-        });
+//        });
     }
     public function save(array $options = [])
     {   //both inserts and updates
@@ -61,7 +62,7 @@ trait EntrustRoleTrait
             // - can access everything except billing info
         // editor is 100-199
             // - can create, edit, and delete resources
-            // - cannot change users, or account information
+            // - cannot change users, or team information
         // reviewer is 200-299
             // - can only view and edit resources
         // viewer is 300-399
@@ -80,9 +81,19 @@ trait EntrustRoleTrait
      */
     public function module()
     {
-        return $this->belongsTo('App/Module','module_id');
+        return $this->belongsTo('App\Module','module_id');
     }
-    
+
+    /**
+     * Returns the Team associated with this Role
+     *
+     * @return mixed
+     */
+    public function team()
+    {
+        return $this->belongsTo('App\Team');
+    }
+
     /**
      * Many-to-Many relations with the user model.
      *
@@ -90,7 +101,7 @@ trait EntrustRoleTrait
      */
     public function users()
     {
-        return $this->belongsToMany(Config::get('auth.providers.users.model'), Config::get('entrust.role_user_table'),Config::get('entrust.role_foreign_key'),Config::get('entrust.user_foreign_key'))->withPivot(['account_id']);
+        return $this->belongsToMany(Config::get('auth.providers.users.model'), Config::get('entrust.role_user_table'),Config::get('entrust.role_foreign_key'),Config::get('entrust.user_foreign_key'))->withPivot(['team_id']);
     }
 
     /**
@@ -133,10 +144,10 @@ trait EntrustRoleTrait
      *
      * @return bool
      */
-    public function hasPermission($name, $requireAll = false)
+    public function hasPermission($permission, $requireAll = false)
     {
-        if (is_array($name)) {
-            foreach ($name as $permissionName) {
+        if (is_array($permission)) {
+            foreach ($permission as $permissionName) {
                 $hasPermission = $this->hasPermission($permissionName);
 
                 if ($hasPermission && !$requireAll) {
@@ -151,8 +162,11 @@ trait EntrustRoleTrait
             // Return the value of $requireAll;
             return $requireAll;
         } else {
+            if ( is_int($permission) ) {
+                $permission = Permission::findOrFail($permission)->name;
+            }
             foreach ($this->cachedPermissions() as $permission) {
-                if ($permission->name == $name) {
+                if ($permission->name == $permission) {
                     return true;
                 }
             }
@@ -194,7 +208,9 @@ trait EntrustRoleTrait
             $permission = $permission['id'];
         }
 
-        $this->perms()->attach($permission);
+        if ( !$this->hasPermission($permission) ) {
+            $this->perms()->attach($permission);
+        }
     }
 
     /**
